@@ -1,0 +1,22 @@
+version: '3'
+services:
+  mosquitto:
+    image: eclipse-mosquitto
+    ports:
+      - "1883:1883"
+  api:
+    build: .
+    container_name: iot_api
+    ports:
+      - "5000:5000"
+    volumes:
+      - ./data:/app/data
+    depends_on:
+      - mosquitto
+  subscriber:
+    build: .
+    command: python gateway/subscriber.py
+    volumes:
+      - ./data:/app/data
+    depends_on:
+      - mosquitto
