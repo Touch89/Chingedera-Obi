@@ -1,159 +1,136 @@
-import { useState, useEffect } from 'react';
-import { Download, Bell, BellOff, Filter } from 'lucide-react';
-import { Button } from '../components/ui/button';
-import { NodeCard } from '../components/NodeCard';
-import { ThemeToggle } from '../components/ThemeToggle';
-import { NodesState, EventLog } from '../types';
-import { generateSensorData, detectAnomalies } from '../utils/mqttSimulator';
-import { exportToCSV } from '../utils/csvExport';
-import { requestNotificationPermission, sendBrowserNotification } from '../utils/notifications';
-import { toast } from 'sonner';
-import { Link } from 'react-router';
-import { Input } from '../components/ui/input';
-import { Label } from '../components/ui/label';
-import { Card, CardContent, CardHeader, CardTitle } from '../components/ui/card';
-
-const INITIAL_NODES: NodesState = {
-  'node-1': {
-    id: 'node-1',
-    name: 'Nodo 1',
-    connected: true,
-    lastUpdate: Date.now(),
-    relayState: false,
-    currentData: generateSensorData('node-1'),
-    history: []
-  },
-  'node-2': {
-    id: 'node-2',
-    name: 'Nodo 2',
-    connected: true,
-    lastUpdate: Date.now(),
-    relayState: false,
-    currentData: generateSensorData('node-2'),
-    history: []
-  },
-  'node-3': {
-    id: 'node-3',
-    name: 'Nodo 3',
-    connected: true,
-    lastUpdate: Date.now(),
-    relayState: false,
-    currentData: generateSensorData('node-3'),
-    history: []
-  }
-};
+import { useState, useEffect } from "react";
+import { Download, Bell, BellOff, Filter } from "lucide-react";
+import { Button } from "../components/ui/button";
+import { NodeCard } from "../components/NodeCard";
+import { ThemeToggle } from "../components/ThemeToggle";
+import { NodesState, EventLog } from "../types";
+import { exportToCSV } from "../utils/csvExport";
+import {
+  requestNotificationPermission,
+  sendBrowserNotification,
+} from "../utils/notifications";
+import { toast } from "sonner";
+import { Link } from "react-router";
+import { Input } from "../components/ui/input";
+import { Label } from "../components/ui/label";
+import {
+  Card,
+  CardContent,
+  CardHeader,
+  CardTitle,
+} from "../components/ui/card";
+import { controlRelay, getEventLogs, getNodesState } from "../../api";
 
 const MAX_HISTORY = 50;
 
 export default function Dashboard() {
-  const [nodes, setNodes] = useState<NodesState>(INITIAL_NODES);
+  const [nodes, setNodes] = useState<NodesState>({});
   const [eventLogs, setEventLogs] = useState<EventLog[]>([]);
   const [notificationsEnabled, setNotificationsEnabled] = useState(false);
-  const [startDate, setStartDate] = useState('');
-  const [endDate, setEndDate] = useState('');
+  const [startDate, setStartDate] = useState("");
+  const [endDate, setEndDate] = useState("");
 
-  // Actualización automática cada 5 segundos
   useEffect(() => {
-    const interval = setInterval(() => {
-      setNodes(prevNodes => {
-        const newNodes = { ...prevNodes };
-        
-        Object.keys(newNodes).forEach(nodeId => {
-          const node = newNodes[nodeId];
-          
-          // Simular desconexión ocasional
-          const shouldDisconnect = Math.random() < 0.02;
-          if (shouldDisconnect && node.connected) {
-            node.connected = false;
-            addEventLog(nodeId, 'connection', `${node.name} desconectado`);
-            toast.error(`${node.name} desconectado`);
-            return;
-          } else if (!node.connected && Math.random() < 0.5) {
-            node.connected = true;
-            addEventLog(nodeId, 'connection', `${node.name} reconectado`);
-            toast.success(`${node.name} reconectado`);
-          }
-
-          if (node.connected) {
-            const newData = generateSensorData(nodeId, node.currentData);
-            node.currentData = newData;
-            node.lastUpdate = Date.now();
-            
-            // Añadir a historial
-            node.history = [...node.history, newData].slice(-MAX_HISTORY);
-
-            // Detectar anomalías
-            const anomalies = detectAnomalies(newData);
-            if (anomalies.length > 0 && notificationsEnabled) {
-              anomalies.forEach(anomaly => {
-                addEventLog(nodeId, 'alert', `${node.name}: ${anomaly}`);
-                sendBrowserNotification(
-                  `Alerta - ${node.name}`,
-                  anomaly
-                );
-                toast.warning(`${node.name}: ${anomaly}`);
-              });
-            }
-          }
+    const load = async () => {
+      try {
+        const [nextNodes, logs] = await Promise.all([
+          getNodesState(MAX_HISTORY),
+          getEventLogs(100),
+        ]);
+        setNodes(nextNodes);
+        setEventLogs((prev) => {
+          const commandLogs = prev.filter((log) => log.type === "command");
+          return [...commandLogs, ...logs].slice(0, 100);
         });
-        
-        return newNodes;
-      });
-    }, 5000);
+
+        if (notificationsEnabled) {
+          logs
+            .filter((log) => log.type === "alert")
+            .slice(0, 2)
+            .forEach((log) => {
+              sendBrowserNotification(`Alerta - ${log.nodeId}`, log.message);
+            });
+        }
+      } catch {
+        toast.error("No se pudo obtener datos del API");
+      }
+    };
+
+    load();
+    const interval = setInterval(load, 5000);
 
     return () => clearInterval(interval);
   }, [notificationsEnabled]);
 
-  const addEventLog = (nodeId: string, type: EventLog['type'], message: string) => {
-    setEventLogs(prev => [{
-      id: `${Date.now()}-${Math.random()}`,
-      timestamp: Date.now(),
-      type,
-      nodeId,
-      message
-    }, ...prev].slice(0, 100));
+  const addEventLog = (
+    nodeId: string,
+    type: EventLog["type"],
+    message: string,
+  ) => {
+    setEventLogs((prev) =>
+      [
+        {
+          id: `${Date.now()}-${Math.random()}`,
+          timestamp: Date.now(),
+          type,
+          nodeId,
+          message,
+        },
+        ...prev,
+      ].slice(0, 100),
+    );
   };
 
   const handleRelayToggle = (nodeId: string, state: boolean) => {
-    setNodes(prev => ({
-      ...prev,
-      [nodeId]: {
-        ...prev[nodeId],
-        relayState: state
+    const updateRelay = async () => {
+      const nodeName = nodes[nodeId]?.name ?? nodeId;
+      try {
+        await controlRelay(nodeId, state);
+        setNodes((prev) => ({
+          ...prev,
+          [nodeId]: {
+            ...prev[nodeId],
+            relayState: state,
+          },
+        }));
+        addEventLog(
+          nodeId,
+          "command",
+          `Relevador ${nodeName} ${state ? "activado" : "desactivado"}`,
+        );
+        toast.success(
+          `Relevador ${nodeName} ${state ? "activado" : "desactivado"}`,
+        );
+      } catch {
+        toast.error(`No se pudo cambiar el relevador de ${nodeName}`);
       }
-    }));
-    
-    const nodeName = nodes[nodeId].name;
-    addEventLog(
-      nodeId, 
-      'command', 
-      `Relevador ${nodeName} ${state ? 'activado' : 'desactivado'}`
-    );
-    toast.success(`Relevador ${nodeName} ${state ? 'activado' : 'desactivado'}`);
+    };
+
+    updateRelay();
   };
 
   const handleExportCSV = () => {
     const nodesToExport = Object.values(nodes);
     const start = startDate ? new Date(startDate) : undefined;
     const end = endDate ? new Date(endDate) : undefined;
-    
+
     exportToCSV(nodesToExport, start, end);
-    toast.success('Datos exportados correctamente');
-    addEventLog('system', 'command', 'Datos exportados a CSV');
+    toast.success("Datos exportados correctamente");
+    addEventLog("system", "command", "Datos exportados a CSV");
   };
 
   const toggleNotifications = async () => {
     if (!notificationsEnabled) {
       await requestNotificationPermission();
-      if (Notification.permission === 'granted') {
+      if (Notification.permission === "granted") {
         setNotificationsEnabled(true);
-        toast.success('Notificaciones habilitadas');
+        toast.success("Notificaciones habilitadas");
       } else {
-        toast.error('Permiso de notificaciones denegado');
+        toast.error("Permiso de notificaciones denegado");
       }
     } else {
       setNotificationsEnabled(false);
-      toast.info('Notificaciones deshabilitadas');
+      toast.info("Notificaciones deshabilitadas");
     }
   };
 
@@ -164,7 +141,9 @@ export default function Dashboard() {
         <div className="container mx-auto px-4 py-4">
           <div className="flex items-center justify-between">
             <div>
-              <h1 className="text-3xl font-bold">Sistema de Monitoreo Ambiental IoT</h1>
+              <h1 className="text-3xl font-bold">
+                Sistema de Monitoreo Ambiental IoT
+              </h1>
               <p className="text-sm text-muted-foreground">
                 Monitoreo en tiempo real con protocolo MQTT
               </p>
@@ -174,7 +153,11 @@ export default function Dashboard() {
                 variant="outline"
                 size="icon"
                 onClick={toggleNotifications}
-                title={notificationsEnabled ? 'Desactivar notificaciones' : 'Activar notificaciones'}
+                title={
+                  notificationsEnabled
+                    ? "Desactivar notificaciones"
+                    : "Activar notificaciones"
+                }
               >
                 {notificationsEnabled ? (
                   <Bell className="h-5 w-5 text-green-500" />
@@ -185,7 +168,7 @@ export default function Dashboard() {
               <ThemeToggle />
             </div>
           </div>
-          
+
           {/* Navigation */}
           <nav className="flex gap-4 mt-4">
             <Link to="/">
@@ -240,7 +223,7 @@ export default function Dashboard() {
 
         {/* Nodos */}
         <div className="grid grid-cols-1 lg:grid-cols-2 xl:grid-cols-3 gap-6">
-          {Object.values(nodes).map(node => (
+          {Object.values(nodes).map((node) => (
             <NodeCard
               key={node.id}
               node={node}
@@ -256,21 +239,26 @@ export default function Dashboard() {
           </CardHeader>
           <CardContent>
             <div className="space-y-2 max-h-64 overflow-y-auto">
-              {eventLogs.slice(0, 10).map(log => (
+              {eventLogs.slice(0, 10).map((log) => (
                 <div
                   key={log.id}
                   className="flex items-center justify-between p-2 bg-secondary/20 rounded text-sm"
                 >
                   <span className="text-muted-foreground">
-                    {new Date(log.timestamp).toLocaleTimeString('es-ES')}
+                    {new Date(log.timestamp).toLocaleTimeString("es-ES")}
                   </span>
                   <span>{log.message}</span>
-                  <span className={`px-2 py-1 rounded text-xs ${
-                    log.type === 'alert' ? 'bg-yellow-500/20 text-yellow-600' :
-                    log.type === 'error' ? 'bg-red-500/20 text-red-600' :
-                    log.type === 'connection' ? 'bg-blue-500/20 text-blue-600' :
-                    'bg-green-500/20 text-green-600'
-                  }`}>
+                  <span
+                    className={`px-2 py-1 rounded text-xs ${
+                      log.type === "alert"
+                        ? "bg-yellow-500/20 text-yellow-600"
+                        : log.type === "error"
+                          ? "bg-red-500/20 text-red-600"
+                          : log.type === "connection"
+                            ? "bg-blue-500/20 text-blue-600"
+                            : "bg-green-500/20 text-green-600"
+                    }`}
+                  >
                     {log.type}
                   </span>
                 </div>
