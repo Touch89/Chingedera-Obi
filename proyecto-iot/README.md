@@ -26,6 +26,7 @@ sudo systemctl enable mosquitto
 2. Instalar Python con las dependencias especificadas en el archivo ``requirements.txt``.
 3. Crear un archivo JSON con contenido ``[]`` en el que se escribirán las lecturas.
 4. En ``config.py``, actualizar las siguientes variables ``MQTT_BROKER`` y ``DATA_FILE`` usando la librería de ``os`` para que sean los correspondientes del sistema operativo, siendo el primero el proceso de MQTT y el segundo la ruta al archivo JSON creado en el paso 3. 
+5. En ``app.py``, cambiar en la última línea la IP a la de la Raspberry Pi.
 
 Por último, se corre la API:
 ```bash
@@ -37,3 +38,10 @@ sudo python3 app.py
 La API tiene las siguientes rutas funcionales:
 - ``/api/latest``: Retorna la última lectura.
 - ``/api/history``: Retorna las últimas 50 lecturas.
+
+## Configuración de dashboard
+1. Instalar las dependencias.
+```npm install```
+2. Cambiar en /src/api.ts la constante ``API_URL`` para que sea la IP del Raspberry Pi.
+3. Correr el dashboard.
+```npm run dev```
