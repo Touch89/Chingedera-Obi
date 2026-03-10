@@ -1,6 +1,6 @@
 import { EventLog, NodesState, SensorData } from "./app/types";
 
-const API_URL = import.meta.env.VITE_API_URL ?? "http://localhost:5000";
+const API_URL = import.meta.env.VITE_API_URL ?? "http://10.10.1.201:5000/";
 
 type ApiReading = {
   nodo: string;
