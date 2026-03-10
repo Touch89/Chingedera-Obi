@@ -1,115 +1,74 @@
-import { useState, useEffect } from 'react';
-import { ArrowLeft, Filter, Trash2 } from 'lucide-react';
-import { Button } from '../components/ui/button';
-import { Card, CardContent, CardHeader, CardTitle } from '../components/ui/card';
-import { ThemeToggle } from '../components/ThemeToggle';
-import { Badge } from '../components/ui/badge';
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '../components/ui/select';
-import { EventLog } from '../types';
-import { Link } from 'react-router';
-import { format } from 'date-fns';
-import { es } from 'date-fns/locale';
+import { useState, useEffect } from "react";
+import { ArrowLeft, Filter, Trash2 } from "lucide-react";
+import { Button } from "../components/ui/button";
+import {
+  Card,
+  CardContent,
+  CardHeader,
+  CardTitle,
+} from "../components/ui/card";
+import { ThemeToggle } from "../components/ThemeToggle";
+import { Badge } from "../components/ui/badge";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "../components/ui/select";
+import { EventLog } from "../types";
+import { Link } from "react-router";
+import { format } from "date-fns";
+import { es } from "date-fns/locale";
+import { getEventLogs } from "../../api";
 
 export default function EventLogs() {
   const [logs, setLogs] = useState<EventLog[]>([]);
-  const [filter, setFilter] = useState<'all' | 'command' | 'alert' | 'connection' | 'error'>('all');
+  const [filter, setFilter] = useState<
+    "all" | "command" | "alert" | "connection" | "error"
+  >("all");
 
   useEffect(() => {
-    // Generar algunos logs de ejemplo
-    const exampleLogs: EventLog[] = [
-      {
-        id: '1',
-        timestamp: Date.now() - 60000,
-        type: 'connection',
-        nodeId: 'node-1',
-        message: 'Nodo 1 conectado'
-      },
-      {
-        id: '2',
-        timestamp: Date.now() - 120000,
-        type: 'command',
-        nodeId: 'node-2',
-        message: 'Relevador Nodo 2 activado'
-      },
-      {
-        id: '3',
-        timestamp: Date.now() - 180000,
-        type: 'alert',
-        nodeId: 'node-3',
-        message: 'Nodo 3: Temperatura alta: 36.2°C'
-      },
-      {
-        id: '4',
-        timestamp: Date.now() - 240000,
-        type: 'command',
-        nodeId: 'node-1',
-        message: 'Relevador Nodo 1 desactivado'
-      },
-      {
-        id: '5',
-        timestamp: Date.now() - 300000,
-        type: 'connection',
-        nodeId: 'node-2',
-        message: 'Nodo 2 desconectado'
-      },
-      {
-        id: '6',
-        timestamp: Date.now() - 360000,
-        type: 'alert',
-        nodeId: 'node-1',
-        message: 'Nodo 1: Humedad baja: 28.5%'
-      },
-    ];
-    
-    setLogs(exampleLogs);
+    const load = async () => {
+      const apiLogs = await getEventLogs(100);
+      setLogs(apiLogs);
+    };
 
-    // Simular nuevos eventos
-    const interval = setInterval(() => {
-      const eventTypes: EventLog['type'][] = ['command', 'alert', 'connection'];
-      const nodeIds = ['node-1', 'node-2', 'node-3'];
-      const messages = {
-        command: ['Relevador activado', 'Relevador desactivado', 'Configuración actualizada'],
-        alert: ['Temperatura alta detectada', 'Humedad baja detectada', 'Luminosidad anormal'],
-        connection: ['Nodo conectado', 'Nodo desconectado', 'Reconexión exitosa']
-      };
-
-      if (Math.random() > 0.7) {
-        const type = eventTypes[Math.floor(Math.random() * eventTypes.length)];
-        const nodeId = nodeIds[Math.floor(Math.random() * nodeIds.length)];
-        const messageList = messages[type];
-        const message = messageList[Math.floor(Math.random() * messageList.length)];
-
-        setLogs(prev => [{
-          id: `${Date.now()}-${Math.random()}`,
-          timestamp: Date.now(),
-          type,
-          nodeId,
-          message: `${nodeId.replace('-', ' ').toUpperCase()}: ${message}`
-        }, ...prev].slice(0, 100));
-      }
-    }, 10000);
+    load();
+    const interval = setInterval(load, 5000);
 
     return () => clearInterval(interval);
   }, []);
 
-  const filteredLogs = filter === 'all' 
-    ? logs 
-    : logs.filter(log => log.type === filter);
+  const filteredLogs =
+    filter === "all" ? logs : logs.filter((log) => log.type === filter);
 
   const clearLogs = () => {
     setLogs([]);
   };
 
-  const getLogTypeBadge = (type: EventLog['type']) => {
+  const getLogTypeBadge = (type: EventLog["type"]) => {
     switch (type) {
-      case 'alert':
-        return <Badge variant="default" className="bg-yellow-500">Alerta</Badge>;
-      case 'error':
+      case "alert":
+        return (
+          <Badge variant="default" className="bg-yellow-500">
+            Alerta
+          </Badge>
+        );
+      case "error":
         return <Badge variant="destructive">Error</Badge>;
-      case 'connection':
-        return <Badge variant="default" className="bg-blue-500">Conexión</Badge>;
-      case 'command':
-        return <Badge variant="default" className="bg-green-500">Comando</Badge>;
+      case "connection":
+        return (
+          <Badge variant="default" className="bg-blue-500">
+            Conexión
+          </Badge>
+        );
+      case "command":
+        return (
+          <Badge variant="default" className="bg-green-500">
+            Comando
+          </Badge>
+        );
       default:
         return <Badge variant="secondary">Desconocido</Badge>;
     }
@@ -144,7 +103,10 @@ export default function EventLogs() {
             <div className="flex items-center justify-between">
               <CardTitle>Registro de Eventos</CardTitle>
               <div className="flex items-center gap-2">
-                <Select value={filter} onValueChange={(value: any) => setFilter(value)}>
+                <Select
+                  value={filter}
+                  onValueChange={(value: any) => setFilter(value)}
+                >
                   <SelectTrigger className="w-[180px]">
                     <Filter className="h-4 w-4 mr-2" />
                     <SelectValue placeholder="Filtrar por tipo" />
@@ -170,17 +132,21 @@ export default function EventLogs() {
                   No hay eventos registrados
                 </p>
               ) : (
-                filteredLogs.map(log => (
+                filteredLogs.map((log) => (
                   <div
                     key={log.id}
                     className="flex items-center gap-4 p-3 border rounded-lg hover:bg-secondary/50 transition-colors"
                   >
                     <div className="min-w-[140px]">
                       <p className="text-sm font-medium">
-                        {format(new Date(log.timestamp), 'dd/MM/yyyy', { locale: es })}
+                        {format(new Date(log.timestamp), "dd/MM/yyyy", {
+                          locale: es,
+                        })}
                       </p>
                       <p className="text-xs text-muted-foreground">
-                        {format(new Date(log.timestamp), 'HH:mm:ss', { locale: es })}
+                        {format(new Date(log.timestamp), "HH:mm:ss", {
+                          locale: es,
+                        })}
                       </p>
                     </div>
                     <div className="flex-1">
@@ -200,7 +166,9 @@ export default function EventLogs() {
             <CardContent className="pt-6">
               <div className="text-center">
                 <p className="text-3xl font-bold">{logs.length}</p>
-                <p className="text-sm text-muted-foreground">Total de eventos</p>
+                <p className="text-sm text-muted-foreground">
+                  Total de eventos
+                </p>
               </div>
             </CardContent>
           </Card>
@@ -208,7 +176,7 @@ export default function EventLogs() {
             <CardContent className="pt-6">
               <div className="text-center">
                 <p className="text-3xl font-bold text-green-600">
-                  {logs.filter(l => l.type === 'command').length}
+                  {logs.filter((l) => l.type === "command").length}
                 </p>
                 <p className="text-sm text-muted-foreground">Comandos</p>
               </div>
@@ -218,7 +186,7 @@ export default function EventLogs() {
             <CardContent className="pt-6">
               <div className="text-center">
                 <p className="text-3xl font-bold text-yellow-600">
-                  {logs.filter(l => l.type === 'alert').length}
+                  {logs.filter((l) => l.type === "alert").length}
                 </p>
                 <p className="text-sm text-muted-foreground">Alertas</p>
               </div>
@@ -228,7 +196,7 @@ export default function EventLogs() {
             <CardContent className="pt-6">
               <div className="text-center">
                 <p className="text-3xl font-bold text-blue-600">
-                  {logs.filter(l => l.type === 'connection').length}
+                  {logs.filter((l) => l.type === "connection").length}
                 </p>
                 <p className="text-sm text-muted-foreground">Conexiones</p>
               </div>
