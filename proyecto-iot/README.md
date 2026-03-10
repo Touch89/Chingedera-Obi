@@ -1,7 +1,5 @@
 # Sistema de monitoreo ambiental IoT
 
-Foobar is a Python library for dealing with word pluralization.
-
 ## Configuración de nodos
 Utilice Arduino IDE para pasar el código en ``sketch_mar8a.ino`` a los ESP32s. 
 1. Debe actualizar las siguientes variables:
