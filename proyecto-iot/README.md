@@ -26,7 +26,8 @@ sudo systemctl enable mosquitto
 ## Configuración de API
 1. Copiar los cinco archivos en una carpeta del Raspberry Pi.
 2. Instalar Python con las dependencias especificadas en el archivo ``requirements.txt``.
-3. En ``config.py``, actualizar las siguientes variables ``MQTT_BROKER`` y ``DATA_FILE`` usando la librería de ``os`` para que sean los correspondientes del sistema operativo.
+3. Crear un archivo JSON con contenido ``[]`` en el que se escribirán las lecturas.
+4. En ``config.py``, actualizar las siguientes variables ``MQTT_BROKER`` y ``DATA_FILE`` usando la librería de ``os`` para que sean los correspondientes del sistema operativo, siendo el primero el proceso de MQTT y el segundo la ruta al archivo JSON creado en el paso 3. 
 
 Por último, se corre la API:
 ```bash
