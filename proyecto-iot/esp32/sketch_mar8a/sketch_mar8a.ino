@@ -11,13 +11,13 @@
 DHT dht(DHTPIN, DHTTYPE);
 
 // ==================== CONFIGURACIÓN WiFi ====================
-const char* WIFI_SSID = "Alumno";        // Cambiar
-const char* WIFI_PASSWORD = "Mebe2ege";       // Cambiar
+const char* WIFI_SSID = "";
+const char* WIFI_PASSWORD = "";
 
 // ==================== CONFIGURACIÓN MQTT ====================
-const char* MQTT_SERVER = "10.10.1.201";   // No cambiar
-const int MQTT_PORT = 1883;                        // No cambiar
-const char* DEVICE_ID = "nodo2";                 // CAMBIAR: esp32_1, esp32_2, ..., esp32_5
+const char* MQTT_SERVER = "";
+const int MQTT_PORT = 1883;
+const char* DEVICE_ID = "";
 
 // ==================== ESTRUCTURA DE TOPICS ====================
 String BASE_TOPIC = "iot/ambiente";
